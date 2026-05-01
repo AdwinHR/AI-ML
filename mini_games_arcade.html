@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Games Arcade</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: #2a2a33;
+    --accent: #f0c040;
+    --accent2: #ff6b6b;
+    --accent3: #6bffc8;
+    --text: #f0eff4;
+    --muted: #8888a0;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: rgba(13,13,15,.9);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .nav-logo { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px; }
+  .nav-logo span { color: var(--accent); }
+  .nav-back {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all .2s;
+    display: none;
+  }
+  .nav-back:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .nav-back.visible { display: block; }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 60px 32px 40px;
+    text-align: center;
+  }
+  .hero h1 {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p { color: var(--muted); font-size: 1rem; font-family: 'DM Mono', monospace; }
+
+  /* ── HOME GRID ── */
+  #home { transition: opacity .3s; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    padding: 0 32px 60px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media(max-width:700px) {
+    .grid { grid-template-columns: 1fr; padding: 0 16px 40px; }
+    .nav { padding: 16px; }
+    .hero { padding: 40px 16px 28px; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1), border-color .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity .3s;
+    border-radius: var(--radius);
+  }
+  .card:nth-child(1)::before { background: radial-gradient(circle at 30% 30%, rgba(240,192,64,.08), transparent 60%); }
+  .card:nth-child(2)::before { background: radial-gradient(circle at 30% 30%, rgba(255,107,107,.08), transparent 60%); }
+  .card:nth-child(3)::before { background: radial-gradient(circle at 30% 30%, rgba(107,255,200,.08), transparent 60%); }
+  .card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,.4); }
+  .card:hover::before { opacity: 1; }
+  .card:nth-child(1):hover { border-color: rgba(240,192,64,.4); }
+  .card:nth-child(2):hover { border-color: rgba(255,107,107,.4); }
+  .card:nth-child(3):hover { border-color: rgba(107,255,200,.4); }
+
+  .card-emoji { font-size: 2.8rem; line-height: 1; }
+  .card-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
+  .card-desc { color: var(--muted); font-size: .88rem; font-family: 'DM Mono', monospace; line-height: 1.6; flex: 1; }
+  .card-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: all .2s;
+    align-self: flex-start;
+    margin-top: 4px;
+  }
+  .card:nth-child(1) .card-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  .card:nth-child(2) .card-btn:hover { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+  .card:nth-child(3) .card-btn:hover { background: var(--accent3); color: #000; border-color: var(--accent3); }
+
+  /* ── GAME WRAPPER ── */
+  .game-view {
+    display: none;
+    padding: 32px;
+    max-width: 700px;
+    margin: 0 auto;
+    animation: fadeUp .35s ease both;
+  }
+  .game-view.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .game-title {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    margin-bottom: 6px;
+  }
+  .game-subtitle {
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: .85rem;
+    margin-bottom: 28px;
+  }
+
+  /* ── SHARED GAME UI ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: .95rem;
+    cursor: pointer;
+    border: none;
+    transition: all .2s;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--muted); }
+  .btn-red { background: var(--accent2); color: #fff; }
+  .btn-green { background: var(--accent3); color: #000; }
+
+  input[type=number], input[type=text] {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 1.2rem;
+    padding: 12px 16px;
+    border-radius: 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: .78rem;
+    font-weight: 500;
+  }
+  .badge-yellow { background: rgba(240,192,64,.15); color: var(--accent); border: 1px solid rgba(240,192,64,.3); }
+  .badge-red    { background: rgba(255,107,107,.15); color: var(--accent2); border: 1px solid rgba(255,107,107,.3); }
+  .badge-green  { background: rgba(107,255,200,.15); color: var(--accent3); border: 1px solid rgba(107,255,200,.3); }
+
+  /* ── GUESS GAME ── */
+  #guess-feedback {
+    font-size: 1.1rem;
+    font-weight: 700;
+    min-height: 1.5em;
+    transition: all .3s;
+    margin: 12px 0;
+  }
+  .feedback-high { color: var(--accent2); }
+  .feedback-low  { color: #6bb8ff; }
+  .feedback-win  { color: var(--accent3); }
+
+  .guess-range-bar {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    margin: 16px 0 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .guess-range-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6bb8ff, var(--accent));
+    border-radius: 3px;
+    transition: width .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: .72rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%  { transform: translateX(-8px); }
+    40%  { transform: translateX(8px); }
+    60%  { transform: translateX(-5px); }
+    80%  { transform: translateX(5px); }
+  }
+  .shake { animation: shake .4s ease; }
+
+  @keyframes pop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+  .pop { animation: pop .3s ease; }
+
+  /* ── RPS GAME ── */
+  .rps-choices {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 16px 0;
+  }
+  .rps-btn {
+    flex: 1;
+    max-width: 110px;
+    aspect-ratio: 1;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    font-size: 2.2rem;
+    cursor: pointer;
+    transition: all .2s cubic-bezier(.34,1.56,.64,1);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 4px;
+  }
+  .rps-btn span { font-size: .65rem; font-family: 'DM Mono', monospace; color: var(--muted); }
+  .rps-btn:hover { transform: scale(1.08); border-color: var(--accent); }
+  .rps-btn.selected { border-color: var(--accent); background: rgba(240,192,64,.1); }
+  .rps-btn.cpu-selected { border-color: var(--accent2); background: rgba(255,107,107,.1); }
+
+  .rps-vs {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--surface2);
+    border-radius: 12px;
+  }
+  .rps-pick { text-align: center; }
+  .rps-pick .emoji { font-size: 3rem; display: block; }
+  .rps-pick .label { font-size: .75rem; font-family: 'DM Mono', monospace; color: var(--muted); margin-top: 4px; }
+  .rps-divider { font-size: 1.2rem; font-weight: 800; color: var(--muted); }
+
+  .score-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .score-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-align: center;
+    flex: 1;
+  }
+  .score-box .val { font-size: 2rem; font-weight: 800; }
+  .score-box .lbl { font-size: .72rem; font-family: 'DM Mono', monospace; color: var(--muted); }
+
+  /* ── MEMORY GAME ── */
+  .mem-stats {
+    display: flex; gap: 12px; margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: .85rem;
+    color: var(--muted);
+    flex: 1;
+    text-align: center;
+  }
+  .stat-box strong { display: block; color: var(--text); font-size: 1.3rem; font-weight: 700; }
+
+  .mem-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .mem-card {
+    aspect-ratio: 1;
+    cursor: pointer;
+    perspective: 600px;
+  }
+  .mem-card-inner {
+    width: 100%; height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform .45s cubic-bezier(.4,0,.2,1);
+    border-radius: 10px;
+  }
+  .mem-card.flipped .mem-card-inner { transform: rotateY(180deg); }
+  .mem-card.matched .mem-card-inner { transform: rotateY(180deg); }
+  .mem-card-front, .mem-card-back {
+    position: absolute; inset: 0;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    backface-visibility: hidden;
+  }
+  .mem-card-front {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    font-size: 1.8rem;
+    transition: background .2s;
+  }
+  .mem-card-front:hover { background: #22222a; }
+  .mem-card-back {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    font-size: 2.2rem;
+    transform: rotateY(180deg);
+  }
+  .mem-card.matched .mem-card-back {
+    border-color: var(--accent3);
+    background: rgba(107,255,200,.08);
+  }
+  .mem-card-front .card-back-icon { font-size: 1.4rem; opacity: .3; }
+
+  @keyframes matchPop {
+    0%   { transform: rotateY(180deg) scale(1); }
+    50%  { transform: rotateY(180deg) scale(1.15); }
+    100% { transform: rotateY(180deg) scale(1); }
+  }
+  .mem-card.matched .mem-card-inner { animation: matchPop .4s .45s ease both; }
+
+  .win-banner {
+    text-align: center;
+    padding: 24px;
+    background: rgba(107,255,200,.08);
+    border: 1px solid rgba(107,255,200,.3);
+    border-radius: 12px;
+    margin-top: 16px;
+    display: none;
+  }
+  .win-banner.show { display: block; }
+  .win-banner h3 { font-size: 1.6rem; font-weight: 800; color: var(--accent3); margin-bottom: 6px; }
+  .win-banner p  { color: var(--muted); font-family: 'DM Mono', monospace; font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">🕹️ <span>ARCADE</span></div>
+  <button class="nav-back" id="nav-back" onclick="goHome()">← All Games</button>
+</nav>
+
+<!-- HOME -->
+<div id="home">
+  <div class="hero">
+    <h1>Mini <em>Arcade</em></h1>
+    <p>// three games · no downloads · pure fun</p>
+  </div>
+  <div class="grid">
+    <div class="card" onclick="showGame('guess')">
+      <div class="card-emoji">🎯</div>
+      <div class="card-title">Guess the Number</div>
+      <div class="card-desc">Pick a number between 1–100. The game tells you hot or cold. How few guesses can you do it in?</div>
+      <button class="card-btn">Play Now →</button>
+    </div>
+    <div class="card" onclick="showGame('rps')">
+      <div class="card-emoji">✊</div>
+      <div class="card-title">Rock Paper Scissors</div>
+      <div class="card-desc">The classic showdown against a machine that never tilts. Rock, paper, scissors — who wins?</div>
+      <button class="card-btn">Play Now →</button>
+    </div>
+    <div class="card" onclick="showGame('memory')">
+      <div class="card-emoji">🃏</div>
+      <div class="card-title">Memory Cards</div>
+      <div class="card-desc">Flip a 4×4 grid to find matching pairs. Beat your personal best on moves and time!</div>
+      <button class="card-btn">Play Now →</button>
+    </div>
+  </div>
+</div>
+
+<!-- GUESS THE NUMBER -->
+<div class="game-view" id="game-guess">
+  <div class="game-title">🎯 Guess the Number</div>
+  <div class="game-subtitle">// secret number between 1 and 100</div>
+
+  <div class="panel" id="guess-panel">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+      <span class="badge badge-yellow" id="guess-attempts">Attempts: 0</span>
+      <span class="badge badge-green" id="guess-range-badge">Range: 1 – 100</span>
+    </div>
+
+    <div class="guess-range-bar"><div class="guess-range-fill" id="guess-bar" style="width:100%"></div></div>
+    <div class="range-labels"><span id="range-lo">1</span><span id="range-hi">100</span></div>
+
+    <input type="number" id="guess-input" placeholder="Type your guess…" min="1" max="100" onkeydown="if(event.key==='Enter')submitGuess()" />
+
+    <div id="guess-feedback" style="margin:12px 0; min-height:1.5em;"></div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+      <button class="btn btn-primary" onclick="submitGuess()">Guess →</button>
+      <button class="btn btn-ghost" onclick="resetGuess()">New Game</button>
+    </div>
+  </div>
+
+  <div id="guess-history" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+</div>
+
+<!-- ROCK PAPER SCISSORS -->
+<div class="game-view" id="game-rps">
+  <div class="game-title">✊ Rock Paper Scissors</div>
+  <div class="game-subtitle">// you vs the machine</div>
+
+  <div class="panel">
+    <div class="score-row">
+      <div class="score-box">
+        <div class="val" id="rps-you-score">0</div>
+        <div class="lbl">YOU</div>
+      </div>
+      <div class="score-box">
+        <div class="val" id="rps-draw-score">0</div>
+        <div class="lbl">DRAW</div>
+      </div>
+      <div class="score-box">
+        <div class="val" id="rps-cpu-score">0</div>
+        <div class="lbl">CPU</div>
+      </div>
+    </div>
+
+    <div class="rps-choices">
+      <button class="rps-btn" id="rps-rock"     onclick="playRPS('rock')">✊<span>ROCK</span></button>
+      <button class="rps-btn" id="rps-paper"    onclick="playRPS('paper')">✋<span>PAPER</span></button>
+      <button class="rps-btn" id="rps-scissors" onclick="playRPS('scissors')">✌️<span>SCISSORS</span></button>
+    </div>
+
+    <div class="rps-vs" id="rps-vs" style="display:none">
+      <div class="rps-pick">
+        <span class="emoji" id="rps-you-emoji">❓</span>
+        <div class="label">YOU</div>
+      </div>
+      <div class="rps-divider">VS</div>
+      <div class="rps-pick">
+        <span class="emoji" id="rps-cpu-emoji">❓</span>
+        <div class="label">CPU</div>
+      </div>
+    </div>
+
+    <div id="rps-result" style="text-align:center;font-size:1.25rem;font-weight:700;min-height:2em;"></div>
+    <div style="text-align:center;margin-top:12px;">
+      <button class="btn btn-ghost" onclick="resetRPS()">Reset Scores</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEMORY GAME -->
+<div class="game-view" id="game-memory">
+  <div class="game-title">🃏 Memory Cards</div>
+  <div class="game-subtitle">// find all 8 pairs</div>
+
+  <div class="mem-stats">
+    <div class="stat-box"><strong id="mem-moves">0</strong>Moves</div>
+    <div class="stat-box"><strong id="mem-timer">0:00</strong>Time</div>
+    <div class="stat-box"><strong id="mem-pairs">0/8</strong>Pairs</div>
+  </div>
+
+  <div class="mem-grid" id="mem-grid"></div>
+
+  <div class="win-banner" id="mem-win">
+    <h3>🎉 You Won!</h3>
+    <p id="mem-win-stats"></p>
+    <button class="btn btn-primary" style="margin-top:16px;" onclick="initMemory()">Play Again</button>
+  </div>
+
+  <div style="margin-top:16px; text-align:right;">
+    <button class="btn btn-ghost" onclick="initMemory()">Restart</button>
+  </div>
+</div>
+
+<script>
+/* ─── ROUTING ─── */
+function showGame(id) {
+  document.getElementById('home').style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('home').style.display = 'none';
+    document.getElementById('game-' + id).classList.add('active');
+    document.getElementById('nav-back').classList.add('visible');
+    if (id === 'memory') initMemory();
+    if (id === 'guess')  resetGuess();
+    if (id === 'rps')    resetRPS();
+  }, 250);
+}
+function goHome() {
+  document.querySelectorAll('.game-view').forEach(g => g.classList.remove('active'));
+  document.getElementById('nav-back').classList.remove('visible');
+  const home = document.getElementById('home');
+  home.style.display = ''; home.style.opacity = '0';
+  requestAnimationFrame(() => { home.style.transition = 'opacity .3s'; home.style.opacity = '1'; });
+  clearInterval(memTimer);
+}
+
+/* ─── GUESS THE NUMBER ─── */
+let gSecret, gAttempts, gLo, gHi;
+
+function resetGuess() {
+  gSecret   = Math.floor(Math.random() * 100) + 1;
+  gAttempts = 0;
+  gLo = 1; gHi = 100;
+  document.getElementById('guess-input').value = '';
+  document.getElementById('guess-feedback').textContent = '';
+  document.getElementById('guess-feedback').className = '';
+  document.getElementById('guess-attempts').textContent = 'Attempts: 0';
+  document.getElementById('guess-range-badge').textContent = 'Range: 1 – 100';
+  document.getElementById('guess-history').innerHTML = '';
+  document.getElementById('range-lo').textContent = '1';
+  document.getElementById('range-hi').textContent = '100';
+  document.getElementById('guess-bar').style.width = '100%';
+  document.getElementById('guess-input').disabled = false;
+}
+
+function submitGuess() {
+  const input = document.getElementById('guess-input');
+  const val = parseInt(input.value);
+  if (!val || val < 1 || val > 100) {
+    shakeEl(input); return;
+  }
+  gAttempts++;
+  document.getElementById('guess-attempts').textContent = `Attempts: ${gAttempts}`;
+  addGuessChip(val);
+
+  const fb = document.getElementById('guess-feedback');
+  const panel = document.getElementById('guess-panel');
+
+  if (val === gSecret) {
+    fb.textContent = `🎉 Correct! It was ${gSecret}! (${gAttempts} attempts)`;
+    fb.className = 'feedback-win';
+    popEl(panel);
+    input.disabled = true;
+  } else if (val > gSecret) {
+    fb.textContent = `⬇️  Too High!`;
+    fb.className = 'feedback-high';
+    gHi = Math.min(gHi, val - 1);
+    shakeEl(input);
+  } else {
+    fb.textContent = `⬆️  Too Low!`;
+    fb.className = 'feedback-low';
+    gLo = Math.max(gLo, val + 1);
+    shakeEl(input);
+  }
+
+  const span = gHi - gLo;
+  const pct  = Math.round((span / 99) * 100);
+  document.getElementById('guess-bar').style.width = pct + '%';
+  document.getElementById('range-lo').textContent = gLo;
+  document.getElementById('range-hi').textContent = gHi;
+  document.getElementById('guess-range-badge').textContent = `Range: ${gLo} – ${gHi}`;
+  input.value = '';
+  input.focus();
+}
+
+function addGuessChip(val) {
+  const chip = document.createElement('span');
+  chip.className = 'badge badge-yellow';
+  chip.textContent = '#' + gAttempts + ': ' + val;
+  chip.style.animation = 'fadeUp .3s ease both';
+  document.getElementById('guess-history').appendChild(chip);
+}
+
+function shakeEl(el) {
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+}
+function popEl(el) {
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+}
+
+/* ─── ROCK PAPER SCISSORS ─── */
+let rpsScores = { you: 0, cpu: 0, draw: 0 };
+const rpsEmoji = { rock: '✊', paper: '✋', scissors: '✌️' };
+const rpsChoices = ['rock', 'paper', 'scissors'];
+
+function resetRPS() {
+  rpsScores = { you: 0, cpu: 0, draw: 0 };
+  updateRPSScores();
+  document.getElementById('rps-result').textContent = '';
+  document.getElementById('rps-vs').style.display = 'none';
+  document.querySelectorAll('.rps-btn').forEach(b => b.classList.remove('selected','cpu-selected'));
+}
+
+function playRPS(choice) {
+  const cpu = rpsChoices[Math.floor(Math.random() * 3)];
+  document.querySelectorAll('.rps-btn').forEach(b => b.classList.remove('selected','cpu-selected'));
+  document.getElementById('rps-' + choice).classList.add('selected');
+  document.getElementById('rps-' + css(cpu)).classList.add('cpu-selected');
+
+  document.getElementById('rps-you-emoji').textContent = rpsEmoji[choice];
+  document.getElementById('rps-cpu-emoji').textContent = rpsEmoji[cpu];
+  document.getElementById('rps-vs').style.display = 'flex';
+
+  const res = document.getElementById('rps-result');
+  if (choice === cpu) {
+    res.textContent = "🤝 It's a Draw!"; res.style.color = 'var(--muted)';
+    rpsScores.draw++;
+  } else if (
+    (choice === 'rock'     && cpu === 'scissors') ||
+    (choice === 'paper'    && cpu === 'rock')     ||
+    (choice === 'scissors' && cpu === 'paper')
+  ) {
+    res.textContent = "🏆 You Win!"; res.style.color = 'var(--accent3)';
+    rpsScores.you++;
+  } else {
+    res.textContent = "💀 CPU Wins!"; res.style.color = 'var(--accent2)';
+    rpsScores.cpu++;
+  }
+  updateRPSScores();
+}
+function css(s) { return s; }
+
+function updateRPSScores() {
+  document.getElementById('rps-you-score').textContent  = rpsScores.you;
+  document.getElementById('rps-cpu-score').textContent  = rpsScores.cpu;
+  document.getElementById('rps-draw-score').textContent = rpsScores.draw;
+}
+
+/* ─── MEMORY CARD GAME ─── */
+const memEmojis = ['🍕','🎸','🚀','🐙','🌈','🦊','💎','🎩'];
+let memCards = [], memFlipped = [], memMatched = 0, memMoves = 0;
+let memTimerVal = 0, memTimer = null, memLock = false;
+
+function initMemory() {
+  clearInterval(memTimer);
+  memFlipped = []; memMatched = 0; memMoves = 0; memTimerVal = 0; memLock = false;
+  document.getElementById('mem-moves').textContent = '0';
+  document.getElementById('mem-timer').textContent = '0:00';
+  document.getElementById('mem-pairs').textContent = '0/8';
+  document.getElementById('mem-win').classList.remove('show');
+
+  // shuffle
+  memCards = [...memEmojis, ...memEmojis]
+    .map((e,i) => ({ id: i, emoji: e, matched: false }))
+    .sort(() => Math.random() - .5);
+
+  const grid = document.getElementById('mem-grid');
+  grid.innerHTML = '';
+  memCards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'mem-card';
+    el.dataset.index = i;
+    el.innerHTML = `
+      <div class="mem-card-inner">
+        <div class="mem-card-front"><span class="card-back-icon">❓</span></div>
+        <div class="mem-card-back">${card.emoji}</div>
+      </div>`;
+    el.addEventListener('click', () => flipCard(el, i));
+    grid.appendChild(el);
+  });
+}
+
+function flipCard(el, i) {
+  if (memLock || el.classList.contains('flipped') || el.classList.contains('matched')) return;
+  el.classList.add('flipped');
+  memFlipped.push({ el, i });
+
+  if (memFlipped.length === 1) {
+    // start timer on first flip
+    if (memTimerVal === 0 && !memTimer) startMemTimer();
+  }
+
+  if (memFlipped.length === 2) {
+    memMoves++;
+    document.getElementById('mem-moves').textContent = memMoves;
+    memLock = true;
+    const [a, b] = memFlipped;
+    if (memCards[a.i].emoji === memCards[b.i].emoji) {
+      // match!
+      setTimeout(() => {
+        a.el.classList.add('matched'); a.el.classList.remove('flipped');
+        b.el.classList.add('matched'); b.el.classList.remove('flipped');
+        memMatched++;
+        document.getElementById('mem-pairs').textContent = `${memMatched}/8`;
+        memFlipped = []; memLock = false;
+        if (memMatched === 8) memWin();
+      }, 500);
+    } else {
+      setTimeout(() => {
+        a.el.classList.remove('flipped');
+        b.el.classList.remove('flipped');
+        memFlipped = []; memLock = false;
+      }, 900);
+    }
+  }
+}
+
+function startMemTimer() {
+  memTimer = setInterval(() => {
+    memTimerVal++;
+    const m = Math.floor(memTimerVal / 60);
+    const s = memTimerVal % 60;
+    document.getElementById('mem-timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  }, 1000);
+}
+
+function memWin() {
+  clearInterval(memTimer);
+  const m = Math.floor(memTimerVal / 60);
+  const s = memTimerVal % 60;
+  const timeStr = `${m}:${s.toString().padStart(2,'0')}`;
+  document.getElementById('mem-win-stats').textContent =
+    `Completed in ${memMoves} moves and ${timeStr}`;
+  document.getElementById('mem-win').classList.add('show');
+}
+</script>
+</body>
+</html>
